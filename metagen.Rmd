@@ -1,0 +1,209 @@
+---
+title: "16s rRna metagenomics analysis report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(rmarkdown)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(dada2)
+library(phyloseq)
+library(Biostrings)
+library(treemap)
+library(highcharter)
+library(kableExtra)
+library(heatmaply)
+library(plotly)
+
+# Set script args
+args = commandArgs(trailingOnly=TRUE)
+path   <- args[1]
+
+
+ps <- readRDS("/home/makis/run434_16S_test/silva_ps.rds")
+data_trunc <- read.csv("/home/makis/run434_16S_test/data_trunc.tsv", sep="")
+enzymes_pre <- read.delim("/home/makis/16s_pipeline_test/picrust2_out_pipeline/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv")
+pathways <- read.delim("/home/makis/16s_pipeline_test/picrust2_out_pipeline/pathways_out/path_abun_unstrat_descrip.tsv")
+```
+
+## Data filtering
+The table shows how many reads were truncated in the fitering steps followed in the DADA-2 pipeline for taxonomy classification. 
+```{r trunc, warning=FALSE}
+kable(data_trunc) %>%
+kable_styling("striped", full_width = F) %>%
+column_spec(5, color = "green", bold = TRUE)
+```
+In gray-scale is a heat map of the frequency of each quality score at each base position. The mean quality score at each position is shown by the green line, and the quartiles of the quality score distribution by the orange lines. The red line shows the scaled proportion of reads that extend to at least that position.
+```{r qc, echo=FALSE, out.width = '100%'}
+knitr::include_graphics(paste0(path,"out/plots/QC.png"))
+```
+The error rates for each possible transition (A→C, A→G, …) are shown. Points are the observed error rates for each consensus quality score. The black line shows the estimated error rates after convergence of the machine-learning algorithm. The red line shows the error rates expected under the nominal definition of the Q-score.
+```{r noise, echo=FALSE, out.width = '100%'}
+knitr::include_graphics(paste0(path,"out/plots/noise.png"))
+```
+## Alpha diversity
+Alpha diversity will visualize how many different species could be decected in a microbial ecosystem.
+```{r alpha, warning=FALSE}
+alpha <- plot_richness(
+  ps,
+  "Subject",
+  color="Subject",
+  measures=c("Chao1", "Shannon", "ACE"),
+  title = "Alpha diversity"
+  ) + 
+  geom_point(size=2, alpha=0.7)
+ggplotly(alpha, width = 800, height = 600)
+```
+
+## Beta diversity
+Beta diversity will depict how different is the microbial composition in one environment compared to another based on the Order of each species. Samples/species are separated on two side-by-side panels.
+```{r ordination, warning=FALSE}
+wh0 = genefilter_sample(
+  ps, 
+  filterfun_sample(function(x) x > 1), 
+  A=1
+  )
+GP1 = prune_taxa(wh0, ps)
+GP1 = ps
+GP1 = transform_sample_counts(GP1, function(x) 1E6 * x/sum(x))
+phylum.sum = tapply(
+  taxa_sums(GP1), 
+  tax_table(GP1)[, "Order"], 
+  sum, 
+  na.rm=TRUE
+  )
+top10phyla = names(sort(phylum.sum, TRUE))[1:10]
+GP1 = prune_taxa((tax_table(GP1)[, "Order"] %in% top10phyla), GP1)
+GP.ord <- ordinate(GP1, "MDS", "bray")
+
+ordination <- plot_ordination(
+  GP1, 
+  GP.ord, 
+  type="split", 
+  color="Order", 
+  label="Subject",
+  title="Beta diversity"
+  ) + geom_point(size=2) + scale_color_brewer(palette="Spectral")
+ggplotly(ordination, width = 800, height = 600)
+```
+
+## OTU abundance analysis
+Abundance of top 30 most abundant OTUs accross all samples. At each OTU family’s horizontal position, the abundance values for each OTU are stacked in order from greatest to least, separate by a thin horizontal line. The values are stacked in order as a means of displaying both the sum total value while still representing the individual OTU abundances.
+```{r barplot, warning=FALSE}
+# Abundance barplot based in top30 appearing OTUs accross all samples
+top30 <- names(sort(taxa_sums(ps), decreasing=TRUE))[1:30]
+ps_top30 <- transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
+ps_top30 <- prune_taxa(top30, ps_top30)
+
+barplot <- plot_bar(
+  ps_top30, 
+  "Family", 
+  fill="Genus", 
+  facet_grid=~Subject,
+  title="Abundance barplot"
+  ) +
+scale_fill_brewer(palette="Paired") +
+theme(axis.title.y = element_text(margin = margin(t = 0, r = 200, b = 100, l = 0)))
+ggplotly(barplot, width = 800, height = 600)
+```
+
+## Dendrogram
+To capture the species diversity as much as possible, 200 random OTUs among the 1000 most abundant ones are shown in this figure. Any species-level annotation available will be displayed next to the relevant point. OTUs are distinguished in terms of abundance, sample, and phylum by size, shape and color of the points respectively.
+```{r tree, warning=FALSE}
+# 200 random OTUs among the 1000 most abundant ones
+ps_top1000 <- prune_taxa(names(sort(taxa_sums(ps), TRUE))[1:1000], ps)
+ps_tree = prune_taxa(taxa_names(ps_top1000)[sample(1:nrow(tax_table(ps_top1000)),size = 200)], ps_top1000)
+
+tree <- plot_tree(
+  ps_tree,
+  ladderize="left",
+  shape="Sample",
+  color="Phylum",
+  label.tips = "Species",
+  text.size = 4,
+  size="abundance",
+  base.spacing = 0.03,
+  method = "sampledodge",
+  title = "Tree clustering",
+  plot.margin=0.1
+  )
+ggplotly(tree, width = 800, height = 600)
+```
+
+## Phyla structure network analysis
+The network helps identify any underlying structures in the co-occurence of different phyla across all datasets. The graph represents the 200 most abundant OTUs.
+```{r net, warning=FALSE}
+# top-200 appearing OTUs by phylum
+ps_net <- prune_taxa(names(sort(taxa_sums(ps), TRUE))[1:200], ps)
+jg <- make_network(ps_net, "taxa", "jaccard", 0.3)
+net <- plot_network(title = "Bacterial classes co-occurence network", 
+                    g = jg,
+                    physeq = ps_net,
+                    type = "taxa", 
+                    color = "Phylum", 
+                    line_weight = 0.4, 
+                    label = "Class")
+ggplotly(net, width = 800, height = 600)
+```
+
+## Sample enzyme composition
+This is the functional annotation of the OTUs. The treemap depicts the actual abundance of enzyme classes, groupped by sample.
+```{r treemap, include=FALSE}
+# Enzymes Treemap
+class <- case_when(
+  grepl(pattern = "EC:1", x = enzymes_pre$function.) ~ "Oxidoreductases",
+  grepl(pattern = "EC:2", x = enzymes_pre$function.) ~ "Transferases",
+  grepl(pattern = "EC:3", x = enzymes_pre$function.) ~ "Hydrolases",
+  grepl(pattern = "EC:4", x = enzymes_pre$function.) ~ "Lyases",
+  grepl(pattern = "EC:5", x = enzymes_pre$function.) ~ "Isomerases",
+  grepl(pattern = "EC:6", x = enzymes_pre$function.) ~ "Ligases",
+  grepl(pattern = "EC:7", x = enzymes_pre$function.) ~ "Translocases"
+)
+
+enzymes <- add_column(enzymes_pre, class, .after = 2)
+enzymes_expanded <- gather(enzymes, "sample", "abundance", 4:ncol(enzymes))
+tree <- treemap(enzymes_expanded,
+        aspRatio = 2,
+        index = c("sample",
+                  "class"),
+        vSize ="abundance", 
+        vColor = "sample",
+        type="categorical",
+        align.labels = list(c("centre",
+                              "bottom"),
+                            c("left",
+                              "top")),
+        algorithm = "pivotSize" ,
+        sortID = "abundance",
+        palette = "Spectral",
+        title = "Enzyme class abundance",
+        fontcolor.labels = c("#435856","white"), 
+        fontsize.labels = c(15,9),
+        fontface.labels = 2,
+        border.col = "grey",
+        bg.labels = 220)
+```
+```{r hctreemap, warning=FALSE}
+hctreemap(tree, allowDrillToNode = TRUE) %>% 
+   hc_title(text = "Enzyme class abundance") %>% 
+   hc_tooltip(pointFormat = "Group: <b>{point.name}</b><br>
+                             Abundance: {point.value:,.0f}")
+```
+
+## Pathways abundance
+The heatmap demonstrates the relative (on a 0-1 scale) abundance of the pathways that our OTUs were found to participate in.
+```{r heatmap, warning=FALSE}
+pt <- pathways
+pt[] <- paste("description:",pathways$description)
+rownames(pathways) <- pathways[,1]
+heatmaply(normalize(pathways[,3:ncol(pathways)]), 
+          custom_hovertext = pt, 
+          xlab = "Samples", 
+          ylab = "KEGG Pathway", 
+          main = "Pathways relative abundance") %>% 
+  layout(width=1000, height=1000)
+```
