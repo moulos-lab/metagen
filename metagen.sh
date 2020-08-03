@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# # Exit on error
-# set -e
+# Exit on error
+set -e
 
 path="$1"
 DB="$2"
@@ -32,9 +32,6 @@ rm -rf "$path/logs"; mkdir "$path/logs"
 rm -rf "$path/out"; mkdir "$path/out"
 mkdir "$path/out/plots"
 
-# Convert BAM files to fastQ
-
-
 # Base Pipeline - generate required outputs
 printf "\nRunning DADA2 pipeline...\n\n"
 Rscript /home/makis/tools/metagen/dada2_pipeline.R "$path" "$DB" >"$path"/logs/out 2>"$path"/logs/error
@@ -55,11 +52,7 @@ conda deactivate
 # Generate rmd report
 printf "\nRunning phyloseq RMD pipeline...\n\n"
 printToLog "Generating visualizations and Rmarkdown report ..." >>"$path"/logs/out 2>>"$path"/logs/error
-Rscript -e "path = '$1'; rmarkdown::render('/home/makis/tools/metagen/metagen.Rmd', output_file = paste0(path,'metagen_report.html'), output_dir = path)" >>$1/logs/out 2>>$1/logs/error
-
-# # Converto to final PDF through weasyprint
-# printf "\nPrinting PDF... \n\n"
-# python3 -m weasyprint "$path/metagen_report.html" "$path/metagen_report.pdf" -s "/home/makis/tools/metagen/styles.css" >> $4/logs/out 2>>$4/logs/error
+Rscript -e "path = '$path'; DB= '$DB'; rmarkdown::render('/home/makis/tools/metagen/metagen.Rmd', output_file = paste0(path,'metagen_report.html'), output_dir = path)" >>$1/logs/out 2>>$1/logs/error
 
 printf "\nAnalysis Complete! \n\n"
 printf "\nResults in $path \n\n"

@@ -143,9 +143,8 @@ if (DB == "refseq") {
 
 # This will need to change if samples fall into distinct experimental conditions
 samples.out <- sample.names
-subject <- sample.names
-type <- substr(subject,1,1)
-samdf <- data.frame(Subject=subject, Type=type)
+organ <- sapply(strsplit(samples.out, "_"), `[`, 1)
+samdf <- data.frame(Subject=samples.out, Organ=organ)
 rownames(samdf) <- samples.out
 
 # PhyloSeq object

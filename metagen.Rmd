@@ -19,15 +19,11 @@ library(kableExtra)
 library(heatmaply)
 library(plotly)
 
-# Set script args
-args = commandArgs(trailingOnly=TRUE)
-path   <- args[1]
-
-
-ps <- readRDS("/home/makis/run434_16S_test/silva_ps.rds")
-data_trunc <- read.csv("/home/makis/run434_16S_test/data_trunc.tsv", sep="")
-enzymes_pre <- read.delim("/home/makis/16s_pipeline_test/picrust2_out_pipeline/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv")
-pathways <- read.delim("/home/makis/16s_pipeline_test/picrust2_out_pipeline/pathways_out/path_abun_unstrat_descrip.tsv")
+#FIX DIRECTORIES
+ps <- readRDS(paste0(path,"/out/",DB,"_ps.rds"))
+data_trunc <- read.csv(file=paste0(path,"/out/data_trunc.tsv"), sep="")
+enzymes_pre <- read.delim(paste0(path,"/out/functionalAnn_out/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz"))
+pathways <- read.delim(paste0(path,"/out/functionalAnn_out/pathways_out/path_abun_unstrat_descrip.tsv.gz"))
 ```
 
 ## Data filtering
@@ -45,13 +41,14 @@ The error rates for each possible transition (A→C, A→G, …) are shown. Poin
 ```{r noise, echo=FALSE, out.width = '100%'}
 knitr::include_graphics(paste0(path,"out/plots/noise.png"))
 ```
+
 ## Alpha diversity
 Alpha diversity will visualize how many different species could be decected in a microbial ecosystem.
 ```{r alpha, warning=FALSE}
 alpha <- plot_richness(
   ps,
   "Subject",
-  color="Subject",
+  color="Organ",
   measures=c("Chao1", "Shannon", "ACE"),
   title = "Alpha diversity"
   ) + 
@@ -78,7 +75,7 @@ phylum.sum = tapply(
   )
 top10phyla = names(sort(phylum.sum, TRUE))[1:10]
 GP1 = prune_taxa((tax_table(GP1)[, "Order"] %in% top10phyla), GP1)
-GP.ord <- ordinate(GP1, "MDS", "bray")
+GP.ord <- ordinate(GP1, "CCA", "bray")
 
 ordination <- plot_ordination(
   GP1, 
@@ -103,7 +100,7 @@ barplot <- plot_bar(
   ps_top30, 
   "Family", 
   fill="Genus", 
-  facet_grid=~Subject,
+  facet_grid=(~Subject),
   title="Abundance barplot"
   ) +
 scale_fill_brewer(palette="Paired") +
