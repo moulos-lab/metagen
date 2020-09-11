@@ -67,11 +67,11 @@ out <- filterAndTrim(
 	fastq_files, 
 	fastqFilt_files, 
 	trimLeft=15, # IonTorrent-specific suggested by authors
-	trimRight=40, # Trim low quality bases @read ends
-	# truncLen=150, # Too many short reads are discarded with this one
+	# trimRight=40, # Trim low quality bases @read ends
+	# truncLen=50, # Too many short reads are discarded with this one
 	minLen=50, # Remove smaller than min allowed reads
 	maxN=0, 
-	maxEE=3,  # Lenient Expected Error - Default: 2
+	maxEE=4,  # Lenient Expected Error - Default: 2
 	truncQ=2, 
 	rm.phix=TRUE,
 	compress=TRUE, 
@@ -120,7 +120,7 @@ if (DB == "silva") {
 }
 
 if (DB == "greengenes") {
-	printTocmd("Assigning taxonomy using GreenGenes v13.8...") # ~5.5h runtime
+	printTocmd("Assigning taxonomy using GreenGenes v13.8...") # Needs >50bp reads
 	taxa <- assignTaxonomy(
 		seqs=seqtab.nochim,
 		refFasta=paste0("/home/makis/tools/metagen/DBs/gg_13_8_train_set_97.fa.gz"), 
