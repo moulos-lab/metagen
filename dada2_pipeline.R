@@ -141,7 +141,6 @@ if (DB == "refseq") {
 	)
 }
 
-# This will need to change if samples fall into distinct experimental conditions
 samples.out <- sample.names
 organ <- sapply(strsplit(samples.out, "_"), `[`, 1)
 samdf <- data.frame(Subject=samples.out, Organ=organ)
