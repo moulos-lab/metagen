@@ -46,5 +46,5 @@ The following tools are required
 
 ## Example
 ```sh
-$ ./oncompnet.sh /home/user/16_analysis_directory greengenes
+$ ./metagen.sh /home/user/16_analysis_directory greengenes
 ```
