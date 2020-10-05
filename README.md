@@ -1,4 +1,4 @@
-# TVC Local Pipeline
+# Metagen
 
 Taxonomic analysis for 16s rRna single-end files
 
