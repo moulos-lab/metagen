@@ -16,7 +16,7 @@ The following tools are required
 * R version 3.6.2 libraries
     * DADA2 - Standard pipeline for taxonomy assignment (https://benjjneb.github.io/dada2/tutorial.html)
     * Phyloseq - Taxonomy visualisations (https://joey711.github.io/phyloseq/index.html)
-    Data management and formatting libraries
+* R Data management and formatting libraries
     * Biostrings
     * ggplot2
     * ape
