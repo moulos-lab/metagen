@@ -96,14 +96,6 @@ printTocmd("Removing chimeric reads...")
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="pooled", multithread=16, verbose=TRUE)
 saveRDS(seqtab.nochim, file=paste0(out_path,"seqtab.rds"))
 
-# Calculate remaining sequencies
-getN <- function(x) sum(getUniques(x))
-printTocmd("Writing reads filtering report...")
-track <- cbind(out, sapply(dadaFs, function(x) sum(getUniques(x))), rowSums(seqtab.nochim))
-colnames(track) <- c("input", "QC-filtered", "denoised", "chimeras-filtered")
-rownames(track) <- sample.names
-write.table(track, file = paste0(out_path,"data_trunc.tsv"))
-
 if (DB == "silva") {
 	printTocmd("Assigning taxonomy using Silva v132...") # ~6.5h runtime
 	taxa <- assignTaxonomy(
@@ -141,10 +133,12 @@ if (DB == "refseq") {
 	)
 }
 
+
 samples.out <- sample.names
 organ <- sapply(strsplit(samples.out, "_"), `[`, 1)
 samdf <- data.frame(Subject=samples.out, Organ=organ)
 rownames(samdf) <- samples.out
+
 
 # PhyloSeq object
 printTocmd("Creating the phyloseq object...")
@@ -156,6 +150,19 @@ ps <- phyloseq(
 		tax_table(taxa)
 		)
 
+# TESTING
+# ps <- readRDS("~/16s/filt_test/out/silva_ps.rds")
+
+# Calculate reads filtering
+ps_bacterial <- subset_taxa(ps, Kingdom == "Bacteria")
+Bacteria <- sample_sums(ps_bacterial)
+getN <- function(x) sum(getUniques(x))
+printTocmd("Writing reads filtering report...")
+track <- cbind(out, sapply(dadaFs, function(x) sum(getUniques(x))), rowSums(seqtab.nochim), Bacteria, Bacteria/rowSums(seqtab.nochim))
+colnames(track) <- c("input", "QC-filtered", "denoised", "chimeras-filtered", "#Bacteria", "%Bacteria")
+rownames(track) <- sample.names
+write.table(track, file = paste0(out_path,"data_trunc.tsv"))
+
 random_tree = rtree(
 	ntaxa(ps), 
 	rooted=TRUE, 
@@ -163,9 +170,6 @@ random_tree = rtree(
 	)
 
 ps <- merge_phyloseq(ps,random_tree)
-
-# TESTING
-# ps <- readRDS("~/silva_ps.rds")
 
 printTocmd("Exporting phyloseq object .rds file...")
 saveRDS(ps, file=paste0(out_path,DB,"_ps.rds"))

@@ -29,22 +29,24 @@ library(plotly)
 
 ps <- readRDS(paste0(path,"/out/",DB,"_ps.rds"))
 data_trunc <- read.csv(file=paste0(path,"/out/data_trunc.tsv"), sep="")
+colnames(data_trunc) <- c("Total Input","QC Filtered","Denoised","Chimeras Filtered","#Bacteria", "%Bacteria", "#Human", "%Human", "#Mouse", "%Mouse")
 enzymes_pre <- read.delim(paste0(path,"/out/functionalAnn_out/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz"))
 pathways <- read.delim(paste0(path,"/out/functionalAnn_out/pathways_out/path_abun_unstrat_descrip.tsv.gz"))
 ```
 
 #Quality Control
-Dataset Quality control was executed with the DADA2 in-built QC commands. The mini-pipeline involves left trimming the 15bp ends (suggested for IonTorrent data), discarding reads shorter than 50bp, denoising and finally merging any chimeric reads to increase eficiency. FastQ Screen was used to generate mappings of read subsamples to reference sequences.
+Dataset Quality control was executed with the DADA2 in-built QC commands. The mini-pipeline involves left trimming the 15bp ends (suggested for IonTorrent data), discarding reads shorter than 50bp, denoising and finally merging any chimeric reads to increase eficiency. FastQ Screen was used to generate mappings of QC filtered fastQ reads to reference contaminant sequences (hg19, mm10).
 
 ### Data filtering
-The table shows how many reads were truncated in the fitering steps followed in the DADA-2 pipeline for taxonomy classification. Final column shows the number of fully filtered reads that are used for the downstream analysis.
+The table shows how many reads were truncated in the fitering steps followed in the DADA-2 pipeline for taxonomy classification. The 'Chimeras Filtered' column shows the number of fully filtered reads that are used for the downstream analysis.
 ```{r trunc, warning=FALSE}
 kable(data_trunc) %>%
 kable_styling("striped", full_width = F) %>%
-column_spec(5, color = "green", bold = TRUE)
-```
+add_header_above(c(" ", "FastQ reads" = 2, "DADA2 reads" = 4, "Human" = 2, "Mouse" = 2)) %>%
+add_header_above(c(" ", "DADA2 reads filtering" = 6, "QC Filtered Contaminant reads" = 4))
+ ```
 
-### Reads mapping
+### Contaminant Reads mapping
 The graphs below depict mapping profiles of the analysed samples. Reference sequences used are hg19, mm10, hg19_16srRna, mm10_16srRna and E.Coli_16srRna. 
 ```{r, echo=FALSE,out.width="49%", out.height="35%",fig.cap="Reads mapping distributions",fig.show='hold',fig.align='center'}
 map_dstrib_PNGs <- list.files(path=paste0(path,"/out/plots/reads_distributions"), pattern='.png', full.names=TRUE)

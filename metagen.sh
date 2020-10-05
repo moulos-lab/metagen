@@ -40,8 +40,12 @@ Rscript /home/makis/tools/metagen/dada2_pipeline.R "$path" "$DB" >"$path"/logs/o
 # Display filtered reads distribution
 printf "\nRunning FastQ Screen pipeline...\n\n"
 for i in `ls "$path"/fastq/filtered/`; do
-	/home/makis/tools/FastQ-Screen-0.14.1/fastq_screen "$path"/fastq/filtered/$i --outdir "$path/out/plots/reads_distributions" --threads 16 --subset 0 >"$path"/logs/out 2>"$path"/logs/error
+	/home/makis/tools/FastQ-Screen-0.14.1/fastq_screen "$path"/fastq/filtered/$i --outdir "$path/out/plots/reads_distributions" --threads 16 --subset 0 >>"$path"/logs/out 2>>"$path"/logs/error
 done
+
+# Add additional info in data_trunc.tsc (Data Filtering table)
+printf "\nRunning Data Filtering pipeline...\n\n"
+Rscript /home/makis/tools/metagen/enrich_dataFiltering.R "$path" >>"$path"/logs/out 2>>"$path"/logs/error
 
 # Run picrust2 pipeline
 printf "\nRunning PICRUSt2 pipeline...\n\n"
