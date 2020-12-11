@@ -40,7 +40,7 @@ The following tools are required
     - Silva-v.132
     - GreenGenes-v.13_8
     - RefSeq-RDP16S_v2_May2018
-3. Input fastQ file must have the naming format "subsample_sampleName.fastq". The string before the underscore will be used to declare the analysis' sample categories.
+3. Input fastQ file must have the naming format "category1_category2_aFileName.fastq". The string before the underscore will be used to declare the analysis' sample categories (up to two).
 4. Output is stored in the metagen_report.html file that will be generated nside the analysis' directory
 
 
